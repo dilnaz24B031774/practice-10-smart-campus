@@ -8,6 +8,7 @@ import {
   Building2,
   Ban,
   Info,
+  Sparkles,
 } from 'lucide-react';
 import {
   ROOMS,
@@ -18,6 +19,7 @@ import {
   type RoomId,
   type Verdict,
 } from '@/availability';
+import { explainAvailability, mockLlmAdapter } from '@/explainAvailability';
 
 function App() {
   const [selectedRoom, setSelectedRoom] = useState<RoomId>('A101');
@@ -25,6 +27,9 @@ function App() {
   const [endTime, setEndTime] = useState<number>(750);
   const [currentTime, setCurrentTime] = useState<number>(540);
   const [verdict, setVerdict] = useState<Verdict | null>(null);
+  const [explanation, setExplanation] = useState<string | null>(null);
+  const [explanationError, setExplanationError] = useState<string | null>(null);
+  const [isExplaining, setIsExplaining] = useState(false);
 
   const room = useMemo(
     () => ROOMS.find((r) => r.id === selectedRoom)!,
@@ -39,14 +44,35 @@ function App() {
     [selectedRoom],
   );
 
+  const clearExplanation = () => {
+    setExplanation(null);
+    setExplanationError(null);
+    setIsExplaining(false);
+  };
+
   const handleCheck = () => {
     setVerdict(
       checkAvailability(room, BOOKINGS, startTime, endTime, currentTime),
     );
+    clearExplanation();
   };
 
   const handleReset = () => {
     setVerdict(null);
+    clearExplanation();
+  };
+
+  const handleExplain = async () => {
+    if (!verdict) return;
+    setIsExplaining(true);
+    setExplanationError(null);
+    const result = await explainAvailability(mockLlmAdapter, { verdict });
+    if (result.ok) {
+      setExplanation(result.explanation);
+    } else {
+      setExplanationError(result.error);
+    }
+    setIsExplaining(false);
   };
 
   const roomHelper = (min: number) => {
@@ -104,6 +130,7 @@ function App() {
                 onChange={(e) => {
                   setCurrentTime(Number(e.target.value));
                   setVerdict(null);
+                  clearExplanation();
                 }}
                 className="w-full accent-emerald-600"
               />
@@ -126,6 +153,7 @@ function App() {
                       onClick={() => {
                         setSelectedRoom(r.id);
                         setVerdict(null);
+                        clearExplanation();
                       }}
                       className={[
                         'flex flex-col items-start gap-1 rounded-xl border p-3 text-left transition',
@@ -166,6 +194,7 @@ function App() {
                   onChange={(e) => {
                     setStartTime(roomHelper(Number(e.target.value)));
                     setVerdict(null);
+                    clearExplanation();
                   }}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
                 />
@@ -185,6 +214,7 @@ function App() {
                   onChange={(e) => {
                     setEndTime(roomHelper(Number(e.target.value)));
                     setVerdict(null);
+                    clearExplanation();
                   }}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
                 />
@@ -265,6 +295,43 @@ function App() {
                       {verdict.reason}
                     </p>
                   </div>
+                </div>
+              )}
+
+              {verdict !== null && (
+                <div className="mt-4 border-t border-slate-200 pt-4">
+                  {!explanation && !explanationError && (
+                    <button
+                      onClick={handleExplain}
+                      disabled={isExplaining}
+                      className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <Sparkles className="h-4 w-4 text-emerald-600" />
+                      {isExplaining ? 'Explaining…' : 'Explain availability'}
+                    </button>
+                  )}
+                  {isExplaining && (
+                    <div className="mt-3 flex items-center gap-2 text-sm text-slate-500">
+                      <span className="h-3 w-3 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
+                      Generating explanation…
+                    </div>
+                  )}
+                  {explanationError && (
+                    <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                      {explanationError}
+                    </div>
+                  )}
+                  {explanation && (
+                    <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                      <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
+                        Explanation
+                      </p>
+                      <p className="mt-1 text-sm leading-relaxed text-slate-700">
+                        {explanation}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
