@@ -1,4 +1,5 @@
 import type { Verdict } from '@/availability';
+import { SYSTEM_PROMPT, buildUserPrompt } from './prompt';
 
 export interface ExplainRequest {
   verdict: Verdict;
