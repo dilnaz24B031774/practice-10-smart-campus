@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import {
   DoorClosed,
   Clock,
@@ -30,7 +30,7 @@ function App() {
   const [explanation, setExplanation] = useState<string | null>(null);
   const [explanationError, setExplanationError] = useState<string | null>(null);
   const [isExplaining, setIsExplaining] = useState(false);
-
+  const explainRequestId = useRef(0);
   const room = useMemo(
     () => ROOMS.find((r) => r.id === selectedRoom)!,
     [selectedRoom],
@@ -45,6 +45,7 @@ function App() {
   );
 
   const clearExplanation = () => {
+    explainRequestId.current += 1;  
     setExplanation(null);
     setExplanationError(null);
     setIsExplaining(false);
@@ -64,15 +65,25 @@ function App() {
 
   const handleExplain = async () => {
     if (!verdict) return;
+
+    const currentRequestId = ++explainRequestId.current;
+
     setIsExplaining(true);
     setExplanationError(null);
+    setExplanation(null);
+
     const result = await explainAvailability(mockLlmAdapter, { verdict });
-    if (result.ok) {
-      setExplanation(result.explanation);
-    } else {
-      setExplanationError(result.error);
+    if (currentRequestId !== explainRequestId.current) {
+    return;
     }
+
     setIsExplaining(false);
+
+    if (result.ok) {
+    setExplanation(result.explanation);
+    } else {
+    setExplanationError(result.error);
+    }
   };
 
   const roomHelper = (min: number) => {

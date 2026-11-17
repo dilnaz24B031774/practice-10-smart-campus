@@ -36,8 +36,8 @@ export const mockLlmAdapter: LlmAdapter = async ({ verdict }) => {
   }
 
   const explanation = verdict.available
-    ? `${verdict.reason} You're all set to use this slot.`
-    : `This slot doesn't work right now. ${verdict.reason}`;
+  ? `${verdict.reason} This time slot appears free according to the current rules.`
+  : `This time slot is not available. ${verdict.reason}`;
 
   return { ok: true, explanation };
 };
